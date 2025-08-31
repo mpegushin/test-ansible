@@ -1,0 +1,39 @@
+name: Deploy K3s
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Setup ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install "ansible>=8.0.0"
+
+      - name: Install k3s-ansible collection
+        run: |
+          ansible-galaxy collection install git+https://github.com/k3s-io/k3s-ansible.git
+
+      - name: Prepare SSH key & known_hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Deploy K3s
+        run: |
+          ansible-playbook k3s.orchestration.site -i inventory.yml
+
